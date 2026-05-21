@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rate buydown calculator</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1a1a1a;
+    background: #faf9f5;
+    margin: 0;
+    padding: 32px 20px;
+    line-height: 1.5;
+    font-size: 14px;
+  }
+  .container { max-width: 980px; margin: 0 auto; }
+  header { margin-bottom: 24px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.2px; }
+  .subtitle { font-size: 13px; color: #666; margin: 0; }
+  .grid { display: grid; grid-template-columns: 300px 1fr; gap: 24px; }
+  .panel { background: #fff; border: 1px solid #e5e3da; border-radius: 10px; padding: 20px; }
+  .section-title { font-size: 11px; font-weight: 600; color: #888; letter-spacing: 0.8px; text-transform: uppercase; margin: 14px 0 8px; }
+  .section-title:first-child { margin-top: 0; }
+  .row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .row label { font-size: 13px; color: #555; display: flex; justify-content: space-between; align-items: center; }
+  .row .val { font-weight: 600; color: #1a1a1a; }
+  input[type=range] { width: 100%; margin: 0; accent-color: #1a1a1a; }
+  input[type=number] {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 15px;
+    font-weight: 600;
+    border: 1px solid #d3d1c7;
+    border-radius: 6px;
+    background: #fff;
+    font-family: inherit;
+    color: #1a1a1a;
+    -moz-appearance: textfield;
+  }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number]:focus { outline: none; border-color: #1a1a1a; }
+  .seg { display: flex; gap: 4px; background: #f1efe8; padding: 3px; border-radius: 8px; margin-bottom: 8px; }
+  .seg button { flex: 1; padding: 7px 4px; font-size: 11.5px; border: 0; background: transparent; border-radius: 6px; cursor: pointer; color: #666; font-weight: 500; }
+  .seg button.active { background: #fff; color: #1a1a1a; box-shadow: 0 0 0 0.5px #d3d1c7; }
+  .explainer { font-size: 12px; color: #555; background: #f6f5f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; line-height: 1.5; }
+  .explainer strong { color: #1a1a1a; display: block; margin-bottom: 3px; }
+  .scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .card { background: #fff; border: 1px solid #e5e3da; border-radius: 10px; padding: 16px; }
+  .card.featured { border: 2px solid #185fa5; }
+  .tag { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #888; margin-bottom: 6px; }
+  .tag.featured { color: #185fa5; }
+  .price { font-size: 22px; font-weight: 600; margin-bottom: 12px; }
+  .line { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-top: 1px solid #f0eee5; }
+  .line:first-of-type { border-top: 0; }
+  .k { color: #666; }
+  .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pay-schedule { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0eee5; }
+  .pay-schedule-title { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 600; }
+  .pay-row { display: flex; justify-content: space-between; font-size: 12.5px; padding: 2px 0; }
+  .pay-row .yr { color: #666; }
+  .pay-row .amt { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .metric { background: #f6f5f0; border-radius: 8px; padding: 12px 14px; }
+  .metric .lbl { font-size: 12px; color: #666; margin-bottom: 4px; }
+  .metric .num { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .metric.pos .num { color: #0f6e56; }
+  .metric.neg .num { color: #a32d2d; }
+  .verdict { padding: 12px 14px; border-radius: 8px; font-size: 13.5px; line-height: 1.5; }
+  .verdict.good { background: #e1f5ee; color: #085041; }
+  .verdict.bad { background: #fcebeb; color: #791f1f; }
+  .verdict.neutral { background: #e6f1fb; color: #0c447c; }
+  .perm-control { display: none; }
+  .perm-control.show { display: flex; flex-direction: column; }
+  .rate-control { display: none; }
+  .rate-control.show { display: flex; flex-direction: column; }
+  .arm-control { display: none; }
+  .arm-control.show { display: flex; flex-direction: column; }
+  footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e3da; font-size: 11.5px; color: #888; line-height: 1.5; }
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+    .summary { grid-template-columns: 1fr; }
+    .scenario-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Rate buydown calculator</h1>
+    <p class="subtitle">Compare standard listing vs. raised price + rate buydown. Adjust inputs to find the optimal marketing/net-proceeds combo.</p>
+  </header>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="section-title">Buydown type</div>
+      <div class="seg" id="typeSeg">
+        <button data-type="2-1" class="active">2-1</button>
+        <button data-type="3-2-1">3-2-1</button>
+        <button data-type="permanent">Permanent</button>
+        <button data-type="7/1-arm">7/1 ARM</button>
+      </div>
+      <div class="explainer" id="explainer"></div>
+
+      <div class="section-title">Listing</div>
+      <div class="row">
+        <label>Base price <span class="val" id="basePriceVal">$840,000</span></label>
+        <input type="range" id="basePrice" min="600000" max="1200000" step="5000" value="840000" />
+      </div>
+      <div class="row">
+        <label>Marketed price <span class="val" id="marketedPriceVal">$866,000</span></label>
+        <input type="range" id="marketedPrice" min="600000" max="1300000" step="1000" value="866000" />
+      </div>
+      <div class="row">
+        <label>Down payment <span class="val" id="downPctVal">20%</span></label>
+        <input type="range" id="downPct" min="3" max="40" step="1" value="20" />
+      </div>
+      <div class="row">
+        <label>Loan term (yrs) <span class="val" id="termVal">30</span></label>
+        <input type="range" id="term" min="10" max="30" step="5" value="30" />
+      </div>
+
+      <div class="section-title">Rates</div>
+      <div class="row">
+        <label>Market rate (30-yr fixed) <span class="val" id="marketRateVal">7.00%</span></label>
+        <input type="range" id="marketRate" min="3" max="10" step="0.01" value="7.0" />
+      </div>
+      <div class="row arm-control" id="armBaseRow">
+        <label>7/1 ARM base rate (lender default) <span class="val" id="armBaseRateVal">6.25%</span></label>
+        <input type="range" id="armBaseRate" min="3" max="10" step="0.01" value="6.25" />
+      </div>
+      <div class="row rate-control" id="permRateRow">
+        <label><span id="marketedRateLabel">Your offered rate</span> <span class="val" id="marketedRateVal">5.50%</span></label>
+        <input type="range" id="marketedRate" min="3" max="10" step="0.01" value="5.5" />
+      </div>
+      <div class="row rate-control" id="permPtsRow">
+        <label>Lender pricing (pts per 0.25%) <span class="val" id="ptsPerStepVal">1.00</span></label>
+        <input type="range" id="ptsPerStep" min="0.5" max="2" step="0.05" value="1.0" />
+      </div>
+    </div>
+
+    <div>
+      <div class="scenario-grid">
+        <div class="card">
+          <div class="tag">Standard listing</div>
+          <div class="price" id="priceA">$840,000</div>
+          <div class="line"><span class="k">Rate</span><span class="v" id="rateA">7.00%</span></div>
+          <div class="line"><span class="k">Loan amount</span><span class="v" id="loanA">$672,000</span></div>
+          <div class="line"><span class="k">Monthly P&amp;I</span><span class="v" id="piA">$4,471</span></div>
+          <div class="line"><span class="k">Buydown cost</span><span class="v">$0</span></div>
+          <div class="line"><span class="k">Net to seller</span><span class="v" id="netA">$840,000</span></div>
+        </div>
+        <div class="card featured">
+          <div class="tag featured">Marketing strategy</div>
+          <div class="price" id="priceB">$866,000</div>
+          <div class="line"><span class="k">Note rate</span><span class="v" id="rateB">7.00%</span></div>
+          <div class="line"><span class="k">Loan amount</span><span class="v" id="loanB">$692,800</span></div>
+          <div class="line"><span class="k">Advertised rate</span><span class="v" id="advRateB">5.00% Yr 1</span></div>
+          <div class="line"><span class="k">Buydown cost</span><span class="v" id="costB">$16,150</span></div>
+          <div class="line" id="ptsLine" style="display:none;"><span class="k">↳ Breakdown</span><span class="v" id="ptsBreakdown" style="font-size: 12px; color: #666;">—</span></div>
+          <div class="line"><span class="k">Net to seller</span><span class="v" id="netB">$849,850</span></div>
+          <div class="pay-schedule">
+            <div class="pay-schedule-title">Buyer payment schedule</div>
+            <div id="paySchedule"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="metric" id="mPayment">
+          <div class="lbl" id="mPaymentLbl">Buyer's Yr 1 monthly Δ</div>
+          <div class="num" id="payDelta">−$751</div>
+        </div>
+        <div class="metric" id="mSeller">
+          <div class="lbl">Seller net Δ</div>
+          <div class="num" id="netDelta">+$9,850</div>
+        </div>
+        <div class="metric">
+          <div class="lbl" id="periodSavLbl">Buyer buydown savings</div>
+          <div class="num" id="periodSav">$16,150</div>
+        </div>
+      </div>
+
+      <div class="verdict" id="verdict"></div>
+    </div>
+  </div>
+
+  <footer>
+    Numbers are estimates. Permanent buydown cost uses ~1 discount point per 0.25% rate reduction (adjustable). Temporary buydown cost equals the total monthly payment subsidy escrowed for the reduction period. Confirm pricing with your lender partner; verify appraisal support and disclosure language before publishing marketing collateral.
+  </footer>
+</div>
+
+<script>
+(function(){
+  var $ = function(id) { return document.getElementById(id); };
+  var fmt = function(n) { return '$' + Math.round(n).toLocaleString('en-US'); };
+  var fmtPct = function(n) { return n.toFixed(2) + '%'; };
+  var buydownType = '2-1';
+
+  function pmt(principal, annualRate, years) {
+    var r = annualRate / 100 / 12;
+    var n = years * 12;
+    if (r === 0) return principal / n;
+    return principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  }
+
+  function update() {
+    var basePrice = +$('basePrice').value;
+    var marketedPrice = +$('marketedPrice').value;
+    var downPct = +$('downPct').value;
+    var term = +$('term').value;
+    var marketRate = +$('marketRate').value;
+    var marketedRate = +$('marketedRate').value;
+    var ptsPerStep = +$('ptsPerStep').value;
+    var armBaseRate = +$('armBaseRate').value;
+
+    $('basePriceVal').textContent = fmt(basePrice);
+    $('marketedPriceVal').textContent = fmt(marketedPrice);
+    $('downPctVal').textContent = downPct + '%';
+    $('termVal').textContent = term;
+    $('marketRateVal').textContent = fmtPct(marketRate);
+    $('marketedRateVal').textContent = fmtPct(marketedRate);
+    $('ptsPerStepVal').textContent = ptsPerStep.toFixed(2);
+    $('armBaseRateVal').textContent = fmtPct(armBaseRate);
+
+    var loanA = basePrice * (1 - downPct/100);
+    var piA = pmt(loanA, marketRate, term);
+
+    var loanB = marketedPrice * (1 - downPct/100);
+    var costB = 0;
+    var advRateLabel = '';
+    var yearSchedule = [];
+    var noteRateForDisplay = marketRate;
+    var breakdownText = null;
+
+    if (buydownType === 'permanent') {
+      var pointsPct = Math.max(0, (marketRate - marketedRate) / 0.25 * ptsPerStep);
+      costB = loanB * (pointsPct / 100);
+      var piB = pmt(loanB, marketedRate, term);
+      advRateLabel = fmtPct(marketedRate) + ' locked';
+      noteRateForDisplay = marketedRate;
+      yearSchedule.push({ label: 'All 30 yrs', payment: piB, rate: marketedRate });
+      if (pointsPct > 0) {
+        breakdownText = pointsPct.toFixed(2) + ' pts × ' + fmt(loanB) + ' loan';
+      }
+    } else if (buydownType === '7/1-arm') {
+      // 7/1 ARM: rate fixed at marketedRate for 7 yrs, then adjusts.
+      // If marketed rate is below ARM base rate, seller pays points to buy it down.
+      var armPointsPct = Math.max(0, (armBaseRate - marketedRate) / 0.25 * ptsPerStep);
+      costB = loanB * (armPointsPct / 100);
+      var piArm = pmt(loanB, marketedRate, term);
+      advRateLabel = fmtPct(marketedRate) + ' (7-yr fixed)';
+      noteRateForDisplay = marketedRate;
+      yearSchedule.push({ label: 'Yrs 1–7', payment: piArm, rate: marketedRate });
+      yearSchedule.push({ label: 'Yr 8+', payment: null, rate: null, note: 'Adjusts annually based on market index' });
+      if (armPointsPct > 0) {
+        breakdownText = armPointsPct.toFixed(2) + ' pts × ' + fmt(loanB) + ' loan';
+      }
+    } else {
+      var piNote = pmt(loanB, marketRate, term);
+      var reductions = buydownType === '2-1' ? [2, 1] : [3, 2, 1];
+      var cost = 0;
+      reductions.forEach(function(red, i) {
+        var yrRate = Math.max(0.125, marketRate - red);
+        var piYr = pmt(loanB, yrRate, term);
+        cost += (piNote - piYr) * 12;
+        yearSchedule.push({ label: 'Yr ' + (i+1), payment: piYr, rate: yrRate });
+      });
+      yearSchedule.push({ label: 'Yr ' + (reductions.length+1) + '+', payment: piNote, rate: marketRate });
+      costB = cost;
+      advRateLabel = fmtPct(yearSchedule[0].rate) + ' Yr 1';
+    }
+
+    var piB_y1 = yearSchedule[0].payment;
+    var netB = marketedPrice - costB;
+
+    $('priceA').textContent = fmt(basePrice);
+    $('rateA').textContent = fmtPct(marketRate);
+    $('loanA').textContent = fmt(loanA);
+    $('piA').textContent = fmt(piA);
+    $('netA').textContent = fmt(basePrice);
+
+    $('priceB').textContent = fmt(marketedPrice);
+    $('rateB').textContent = fmtPct(noteRateForDisplay);
+    $('loanB').textContent = fmt(loanB);
+    $('advRateB').textContent = advRateLabel;
+    $('costB').textContent = fmt(costB);
+    if (breakdownText) {
+      $('ptsLine').style.display = 'flex';
+      $('ptsBreakdown').textContent = breakdownText;
+    } else {
+      $('ptsLine').style.display = 'none';
+    }
+    $('netB').textContent = fmt(netB);
+
+    var sched = $('paySchedule');
+    sched.innerHTML = yearSchedule.map(function(y) {
+      if (y.payment === null) {
+        return '<div class="pay-row"><span class="yr">' + y.label + '</span><span class="amt" style="font-size:11.5px; font-weight:500; color:#888;">' + y.note + '</span></div>';
+      }
+      return '<div class="pay-row"><span class="yr">' + y.label + ' @ ' + fmtPct(y.rate) + '</span><span class="amt">' + fmt(y.payment) + '/mo</span></div>';
+    }).join('');
+
+    var payDelta = piB_y1 - piA;
+    var netDelta = netB - basePrice;
+    var periodSav;
+    if (buydownType === 'permanent') periodSav = -payDelta * 60;
+    else if (buydownType === '7/1-arm') periodSav = -payDelta * 84;
+    else periodSav = costB;
+
+    $('payDelta').textContent = (payDelta >= 0 ? '+' : '−') + fmt(Math.abs(payDelta));
+    $('mPayment').classList.toggle('pos', payDelta < 0);
+    $('mPayment').classList.toggle('neg', payDelta > 0);
+
+    $('netDelta').textContent = (netDelta >= 0 ? '+' : '−') + fmt(Math.abs(netDelta));
+    $('mSeller').classList.toggle('pos', netDelta > 0);
+    $('mSeller').classList.toggle('neg', netDelta < 0);
+
+    if (buydownType === 'permanent') {
+      $('mPaymentLbl').textContent = "Buyer's monthly Δ";
+      $('periodSavLbl').textContent = 'Buyer 5-yr savings';
+    } else if (buydownType === '7/1-arm') {
+      $('mPaymentLbl').textContent = "Buyer's Yrs 1–7 monthly Δ";
+      $('periodSavLbl').textContent = 'Buyer 7-yr savings';
+    } else {
+      $('mPaymentLbl').textContent = "Buyer's Yr 1 monthly Δ";
+      $('periodSavLbl').textContent = 'Buyer buydown savings';
+    }
+    $('periodSav').textContent = fmt(Math.abs(periodSav));
+
+    var v = $('verdict');
+    v.classList.remove('good', 'bad', 'neutral');
+    if (payDelta < 0 && netDelta > 0) {
+      v.classList.add('good');
+      var period = buydownType === 'permanent' ? '' : (buydownType === '7/1-arm' ? ' (Yrs 1–7)' : ' Yr 1');
+      v.textContent = 'Win-win: buyer payment drops $' + Math.round(Math.abs(payDelta)) + '/mo' + period + ' AND you net $' + Math.round(netDelta).toLocaleString() + ' more than base.';
+    } else if (payDelta < 0 && netDelta < 0) {
+      v.classList.add('neutral');
+      v.textContent = 'Strong marketing hook (buyer saves $' + Math.round(Math.abs(payDelta)) + '/mo) but you net $' + Math.round(Math.abs(netDelta)).toLocaleString() + ' less. Raise marketed price to recover.';
+    } else if (payDelta >= 0 && netDelta > 0) {
+      v.classList.add('bad');
+      v.textContent = "Buyer's payment isn't lower — no marketing story. Drop rate further or reduce price.";
+    } else {
+      v.classList.add('bad');
+      v.textContent = 'Worse on both sides. Adjust inputs.';
+    }
+
+    // Manage control visibility
+    var permControls = document.querySelectorAll('.perm-control');
+    for (var i = 0; i < permControls.length; i++) {
+      permControls[i].classList.toggle('show', buydownType === 'permanent');
+    }
+    var rateControls = document.querySelectorAll('.rate-control');
+    for (var j = 0; j < rateControls.length; j++) {
+      rateControls[j].classList.toggle('show', buydownType === 'permanent' || buydownType === '7/1-arm');
+    }
+    var armControls = document.querySelectorAll('.arm-control');
+    for (var k = 0; k < armControls.length; k++) {
+      armControls[k].classList.toggle('show', buydownType === '7/1-arm');
+    }
+    $('marketedRateLabel').textContent = buydownType === '7/1-arm' ? 'Your offered ARM rate (bought down)' : 'Your offered rate (bought down)';
+
+    // Explainer text
+    var explainers = {
+      '2-1': '<strong>2-1 buydown (fixed-rate loan)</strong>Seller pre-pays into an escrow that subsidizes the buyer\'s payment for 2 years: payment in Yr 1 is calculated as if the rate were 2% lower, Yr 2 as if 1% lower. Yr 3 onward, buyer pays the full note rate. The loan itself is a regular 30-year fixed — the rate never changes, just the early payments are subsidized.',
+      '3-2-1': '<strong>3-2-1 buydown (fixed-rate loan)</strong>Same idea as 2-1 but stretched over 3 years (3% lower Yr 1, 2% Yr 2, 1% Yr 3). Stronger headline rate for marketing, but the subsidy costs the seller roughly 2× a 2-1.',
+      'permanent': '<strong>Permanent buydown (fixed-rate loan)</strong>You pay discount points at close to lower the buyer\'s rate from the prevailing market rate down to your offered rate, locked for 30 years. Cost = (market rate − your offered rate) ÷ 0.25 × lender pricing × loan amount. So a 0.87% rate cut at 1.0 lender pricing = 3.48 discount points = 3.48% of the loan.',
+      '7/1-arm': '<strong>7/1 ARM (adjustable-rate mortgage)</strong>The rate is fixed for 7 years, then adjusts annually based on a market index. ARM rates are usually 0.50–1.00% lower than 30-yr fixed because the lender takes less long-term risk. To buy down further, set the offered rate below the ARM base rate — cost works the same way as a permanent buydown. Buyer carries the post-Yr 7 rate risk.'
+    };
+    $('explainer').innerHTML = explainers[buydownType];
+  }
+
+  var segButtons = document.querySelectorAll('#typeSeg button');
+  segButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      segButtons.forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      buydownType = btn.dataset.type;
+      update();
+    });
+  });
+
+  ['basePrice','marketedPrice','downPct','term','marketRate','marketedRate','ptsPerStep','armBaseRate']
+    .forEach(function(id) { $(id).addEventListener('input', update); });
+
+  update();
+})();
+</script>
+</body>
+</html>
